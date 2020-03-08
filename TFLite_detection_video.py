@@ -21,7 +21,10 @@ import sys
 import importlib.util
 import tflite_runtime.interpreter as tflite
 import platform
+import requests
+from threading import Thread
 from TrackableTarget import *
+from RequestWorker import *
 
 def point_in_area(point, area):
     area_xmin = area[0]
@@ -34,7 +37,30 @@ def point_in_area(point, area):
         if(ypoint > area_ymin and ypoint < area_ymax):
             return True
     return False
+
+def saveImage(frame):
+    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S.jpg")
+    file_path = '/home/pi/workspace/svd/raspberry_svd/tmp/'+filename
+    cv2.imwrite(file_path, frame)
+    return file_path
+
+def sendData():
+    print('sendData')
+    #image_path = tram.getImagePath()
+    #image = base64.encodestring(open(image_path,"rb").read())
+    #type = tram.getColor()
+    #color = tram.getType()
+    #id = "cam1"
+    payload = {
+        "time": "1234567890",
+        "img": "kkkkk",
+        "result": "person"
+    }
     
+    #response = requests.post('https://3d76a619.ngrok.io/api/uploadTrainingResult', data = payload)
+    #print(response)
+
+
 EDGETPU_SHARED_LIB = {
   'Linux': 'libedgetpu.so.1',
   'Darwin': 'libedgetpu.1.dylib',
@@ -136,10 +162,15 @@ imH = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
 ##focus area
 focus_area = (258, 172, 204, 307)
-tram = None
+person = None
+
+requestWorker = RequestWorker()
+t = Thread(target=requestWorker.run)
+t.setDaemon(True)
+t.start()
 
 while(video.isOpened()):
-
+    
     # Acquire frame and resize to expected shape [1xHxWx3]
     ret, frame = video.read()
     if ret:
@@ -163,28 +194,40 @@ while(video.isOpened()):
        scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
        num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
        
-       print(scores)
+       #print(scores)
        tmp = None
-         
-    
-           
-       # Loop over all detections and draw detection box if confidence is above minimum threshold
+       
        for i in range(len(scores)):
-           if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
+           if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
+               target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
+               if(point_in_area(target.getCenterPoint() ,focus_area)):
+                   tmp = target
+       
+       
+       if(tmp == None and person != None):
+           person = None
+       elif(tmp != None and person == None):
+           person = tmp
+       else:
+           person = tmp
+       
+       # Loop over all detections and draw detection box if confidence is above minimum threshold
+       # for i in range(len(scores)):
+       #   if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                # Get bounding box coordinates and draw box
                # Interpreter can return coordinates that are outside of image dimensions, need to force them to be within image using max() and min()
-               ymin = int(max(1,(boxes[i][0] * imH)))
-               xmin = int(max(1,(boxes[i][1] * imW)))
-               ymax = int(min(imH,(boxes[i][2] * imH)))
-               xmax = int(min(imW,(boxes[i][3] * imW)))
-               cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
+               #ymin = int(max(1,(boxes[i][0] * imH)))
+               #xmin = int(max(1,(boxes[i][1] * imW)))
+               #ymax = int(min(imH,(boxes[i][2] * imH)))
+               #xmax = int(min(imW,(boxes[i][3] * imW)))
+               #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
                # Draw label
-               object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-               label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
-               labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
-               label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
-               cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10),(255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-               cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+               #object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
+               #label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
+               #labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
+               #label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
+               #cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10),(255, 255, 255), cv2.FILLED) # Draw white box to put label text in
+               #cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
                # Draw label text
                # All the results have been drawn on the frame, so it's time to display it.
        
