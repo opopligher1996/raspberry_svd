@@ -14,7 +14,7 @@ class TrackableTarget:
    self.bbox = ((xmin,ymin), (xmax,ymax))
    self.center_point = (int((xmin+xmax)/2) , int((ymin+ymax)/2))
    self.score = score
-   self.count = 40
+   self.count = 10
    self.label = label
    self.path = None
    # self.centroid = centroid
@@ -25,8 +25,8 @@ class TrackableTarget:
      self.center_point = trackableTarget.center_point
      self.label = trackableTarget.label
  
- def updateImagePath(self, imagePath):
-     self.imagePath = imagePath
+ def updateFrame(self, frame):
+     self.frame = frame
      
  def isClosed():
      print('isClosed')
@@ -45,29 +45,9 @@ class TrackableTarget:
     
  def getScore(self):
      return self.score
-
- def getType(self):
-     if (self.label == "Thomas Tram"):
-         return "thomas"
-     elif (self.label == "SpiderMan Tram"):
-         return "spiderman"
-     elif (self.label == "Zoo Tram"):
-         return "zoo"
-     else :
-         return None
-    
- def getColor(self):
-     if (self.label == "Thomas Tram"):
-         return "blue"
-     elif (self.label == "SpiderMan Tram"):
-         return "red"
-     elif (self.label == "Zoo Tram"):
-         return "green"
-     else:
-         return None
  
- def getImagePath(self):
-     return self.imagePath
+ def getFrame(self):
+     return self.frame
      
  def countDown(self):
      self.count = self.count - 1

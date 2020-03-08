@@ -22,6 +22,8 @@ import importlib.util
 import tflite_runtime.interpreter as tflite
 import platform
 import requests
+import json
+import base64
 from threading import Thread
 from TrackableTarget import *
 from RequestWorker import *
@@ -43,22 +45,6 @@ def saveImage(frame):
     file_path = '/home/pi/workspace/svd/raspberry_svd/tmp/'+filename
     cv2.imwrite(file_path, frame)
     return file_path
-
-def sendData():
-    print('sendData')
-    #image_path = tram.getImagePath()
-    #image = base64.encodestring(open(image_path,"rb").read())
-    #type = tram.getColor()
-    #color = tram.getType()
-    #id = "cam1"
-    payload = {
-        "time": "1234567890",
-        "img": "kkkkk",
-        "result": "person"
-    }
-    
-    #response = requests.post('https://3d76a619.ngrok.io/api/uploadTrainingResult', data = payload)
-    #print(response)
 
 
 EDGETPU_SHARED_LIB = {
@@ -164,10 +150,6 @@ imH = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
 focus_area = (258, 172, 204, 307)
 person = None
 
-requestWorker = RequestWorker()
-t = Thread(target=requestWorker.run)
-t.setDaemon(True)
-t.start()
 
 while(video.isOpened()):
     
@@ -205,31 +187,33 @@ while(video.isOpened()):
        
        
        if(tmp == None and person != None):
-           person = None
+           count = person.countDown()
+           if(count == 0):
+               person = None
        elif(tmp != None and person == None):
+           retval, buffer = cv2.imencode('.jpg', frame)
+           frame_as_text = base64.b64encode(buffer)
+           tmp.updateFrame(frame_as_text)
            person = tmp
+           requestWorker = RequestWorker()
+           t = Thread(target=requestWorker.sendRequest, args = (person,))
+           t.setDaemon(True)
+           t.start()
        else:
            person = tmp
-       
-       # Loop over all detections and draw detection box if confidence is above minimum threshold
-       # for i in range(len(scores)):
-       #   if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-               # Get bounding box coordinates and draw box
-               # Interpreter can return coordinates that are outside of image dimensions, need to force them to be within image using max() and min()
-               #ymin = int(max(1,(boxes[i][0] * imH)))
-               #xmin = int(max(1,(boxes[i][1] * imW)))
-               #ymax = int(min(imH,(boxes[i][2] * imH)))
-               #xmax = int(min(imW,(boxes[i][3] * imW)))
-               #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
-               # Draw label
-               #object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-               #label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
-               #labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
-               #label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
-               #cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10),(255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-               #cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
-               # Draw label text
-               # All the results have been drawn on the frame, so it's time to display it.
+           
+       if(person != None):
+           ((xmin,ymin),(xmax,ymax)) = person.getBBox()
+           cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
+           center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
+           cv2.circle(frame, center_point, 1, (10,255,0), 5)
+           object_name = person.getLabel()
+           score = person.getScore()
+           label = '%s' % (object_name)
+           labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+           label_ymin = max(ymin, labelSize[1] + 10)
+           cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10),(255, 255, 255), cv2.FILLED)
+           cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) 
        
        
        cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
