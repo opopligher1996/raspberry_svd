@@ -19,9 +19,7 @@ import cv2
 import numpy as np
 import sys
 import glob
-import platform
 import importlib.util
-import tflite_runtime.interpreter as tflite
 
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
@@ -32,7 +30,7 @@ parser.add_argument('--graph', help='Name of the .tflite file, if different than
 parser.add_argument('--labels', help='Name of the labelmap file, if different than labelmap.txt',
                     default='labelmap.txt')
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
-                    default=0.3)
+                    default=0.5)
 parser.add_argument('--image', help='Name of the single image to perform detection on. To run detection on multiple images, use --imagedir',
                     default=None)
 parser.add_argument('--imagedir', help='Name of the folder containing images to perform detection on. Folder must contain only images.',
@@ -60,12 +58,6 @@ if (IM_NAME and IM_DIR):
 # If neither an image or a folder are specified, default to using 'test1.jpg' for image name
 if (not IM_NAME and not IM_DIR):
     IM_NAME = 'test1.jpg'
-
-EDGETPU_SHARED_LIB = {
-  'Linux': 'libedgetpu.so.1',
-  'Darwin': 'libedgetpu.1.dylib',
-  'Windows': 'edgetpu.dll'
-}[platform.system()]
 
 # Import TensorFlow libraries
 # If tensorflow is not installed, import interpreter from tflite_runtime, else import from regular tensorflow
@@ -117,13 +109,13 @@ if labels[0] == '???':
 
 # Load the Tensorflow Lite model.
 # If using Edge TPU, use special load_delegate argument
-PATH_TO_CKPT, *device = PATH_TO_CKPT.split('@')
-interpreter = tflite.Interpreter(
-      model_path=PATH_TO_CKPT,
-      experimental_delegates=[
-          tflite.load_delegate(EDGETPU_SHARED_LIB,
-                               {'device': device[0]} if device else {})
-      ])
+if use_TPU:
+    interpreter = Interpreter(model_path=PATH_TO_CKPT,
+                              experimental_delegates=[load_delegate('libedgetpu.so.1.0')])
+    print(PATH_TO_CKPT)
+else:
+    interpreter = Interpreter(model_path=PATH_TO_CKPT)
+
 interpreter.allocate_tensors()
 
 # Get model details
@@ -173,9 +165,7 @@ for image_path in images:
             xmax = int(min(imW,(boxes[i][3] * imW)))
             
             cv2.rectangle(image, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
-            center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
-            cv2.circle(image, center_point, 1, (10,255,0), 5)
-            
+
             # Draw label
             object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
             label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
