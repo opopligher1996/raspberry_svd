@@ -332,11 +332,11 @@ while True:
     time = (t2-t1)/freq
     frame_rate_calc= 1/time
     
-    ##cv2.waitKey(0)
+    #cv2.waitKey(0)
     
     # Press 'q' to quit
-    if cv2.waitKey(1) == ord('q'):
-        break
+    if cv2.waitKey(0) == ord('q'):
+       break
 
 
 # Clean up

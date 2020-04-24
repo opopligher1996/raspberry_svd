@@ -18,8 +18,16 @@ import argparse
 import cv2
 import numpy as np
 import sys
+import tflite_runtime.interpreter as tflite
+import platform
 import glob
 import importlib.util
+
+EDGETPU_SHARED_LIB = {
+  'Linux': 'libedgetpu.so.1',
+  'Darwin': 'libedgetpu.1.dylib',
+  'Windows': 'edgetpu.dll'
+}[platform.system()]
 
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
@@ -109,13 +117,13 @@ if labels[0] == '???':
 
 # Load the Tensorflow Lite model.
 # If using Edge TPU, use special load_delegate argument
-if use_TPU:
-    interpreter = Interpreter(model_path=PATH_TO_CKPT,
-                              experimental_delegates=[load_delegate('libedgetpu.so.1.0')])
-    print(PATH_TO_CKPT)
-else:
-    interpreter = Interpreter(model_path=PATH_TO_CKPT)
-
+PATH_TO_CKPT, *device = PATH_TO_CKPT.split('@')
+interpreter = tflite.Interpreter(
+      model_path=PATH_TO_CKPT,
+      experimental_delegates=[
+          tflite.load_delegate(EDGETPU_SHARED_LIB,
+                               {'device': device[0]} if device else {})
+      ])
 interpreter.allocate_tensors()
 
 # Get model details
@@ -129,6 +137,10 @@ floating_model = (input_details[0]['dtype'] == np.float32)
 input_mean = 127.5
 input_std = 127.5
 
+focus_area = (449, 95, 204, 307)
+mid_line = (551, 0, 551, 600)
+standby_area_left = (347, 95, 102, 307)
+standby_area_right = (653, 95, 102, 307)
 # Loop over every image and perform detection
 for image_path in images:
 
@@ -172,9 +184,15 @@ for image_path in images:
             labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
             label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
             cv2.rectangle(image, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
+            center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
+            cv2.circle(image, center_point, 1, (10,255,0), 5)
             cv2.putText(image, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
 
     # All the results have been drawn on the image, now display the image
+    cv2.line(image, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+    cv2.rectangle(image, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+    cv2.rectangle(image, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
+    cv2.rectangle(image, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
     cv2.imshow('Object detector', image)
 
     # Press any key to continue to next image, or press 'q' to quit

@@ -147,7 +147,10 @@ imW = video.get(cv2.CAP_PROP_FRAME_WIDTH)
 imH = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
 ##focus area
-focus_area = (258, 172, 204, 307)
+focus_area = (449, 95, 204, 307)
+mid_line = (551, 0, 551, 600)
+standby_area_left = (347, 95, 102, 307)
+standby_area_right = (653, 95, 102, 307)
 person = None
 
 
@@ -156,7 +159,7 @@ while(video.isOpened()):
     # Acquire frame and resize to expected shape [1xHxWx3]
     ret, frame = video.read()
     if ret:
-       frame = cv2.flip(frame, 0)
+       #frame = cv2.flip(frame, 0)
        fps = video.get(cv2.CAP_PROP_FPS)
        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
        frame_resized = cv2.resize(frame_rgb, (width, height))
@@ -215,12 +218,14 @@ while(video.isOpened()):
            cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10),(255, 255, 255), cv2.FILLED)
            cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) 
        
-       
+       cv2.line(frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+       cv2.rectangle(frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+       cv2.rectangle(frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
        cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
        cv2.imshow('Object detector', frame)
     
     # Press 'q' to quit
-    if cv2.waitKey(1) == ord('q'):
+    if cv2.waitKey(0) == ord('q'):
         break
 
 # Clean up
