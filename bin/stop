@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sudo killall python3
+sudo killall python3.7

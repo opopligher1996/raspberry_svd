@@ -200,11 +200,11 @@ while(video.isOpened()):
        if(needCapture == True):
            saveImage(frame)
        
-       cv2.line(frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
-       cv2.rectangle(frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
-       cv2.rectangle(frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
-       cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
-       cv2.imshow('Object detector', frame)
+#       cv2.line(frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+#       cv2.rectangle(frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+#       cv2.rectangle(frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
+#       cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
+#       cv2.imshow('Object detector', frame)
     
     # Press 'q' to quit
     if cv2.waitKey(0) == ord('q'):
