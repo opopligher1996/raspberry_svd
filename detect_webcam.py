@@ -241,7 +241,7 @@ mid_line = (551, 0, 551, 600)
 standby_area_left = (347, 95, 102, 307)
 standby_area_right = (653, 95, 102, 307)
 needCapture = False
-snapshot_count = 0
+captureCount = 0
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 while True:
@@ -285,7 +285,11 @@ while True:
                     needCapture = True
         
         if(needCapture == True):
-            saveImage(frame1_resized)
+            captureCount = captureCount + 1
+            if((captureCount % 20) == 0):
+                saveImage(frame)
+            if(captureCount == 100):
+                needCapture = False
             
 #        cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
 #        cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
@@ -306,7 +310,7 @@ while True:
         #cv2.waitKey(0)
         
         # Press 'q' to quit
-        if cv2.waitKey(0) == ord('q'):
+        if cv2.waitKey(1) == ord('q'):
             break
     except:
         print('except')

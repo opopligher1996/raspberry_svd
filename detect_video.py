@@ -152,8 +152,8 @@ focus_area = (449, 95, 204, 307)
 mid_line = (551, 0, 551, 600)
 standby_area_left = (347, 95, 102, 307)
 standby_area_right = (653, 95, 102, 307)
-person = None
-
+needCapture = False
+captureCount = 0
 
 while(video.isOpened()):
     try:
@@ -185,8 +185,6 @@ while(video.isOpened()):
         num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
        
         #print(scores)
-        person = None
-        needCapture = False
         for i in range(len(scores)):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                 target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
@@ -202,8 +200,11 @@ while(video.isOpened()):
                 if(point_in_area(target.getCenterPoint(), focus_area)):
                     needCapture = True
         if(needCapture == True):
-            saveImage(frame)
-            needCapture = False
+            captureCount = captureCount + 1
+            if((captureCount % 20) == 0):
+                saveImage(frame)
+            if(captureCount == 100):
+                needCapture = False
        
 #       cv2.line(frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
 #       cv2.rectangle(frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
@@ -211,7 +212,7 @@ while(video.isOpened()):
 #       cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         cv2.imshow('Object detector', frame)
         # Press 'q' to quit
-        if cv2.waitKey(0) == ord('q'):
+        if cv2.waitKey(1) == ord('q'):
             break
     except:
         print('except')
