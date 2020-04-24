@@ -245,71 +245,71 @@ snapshot_count = 0
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 while True:
+    try:
+        size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
+        # Acquire frame and resize to expected shape [1xHxWx3]
+        if( size > 8589934592):
+            break
+        
+        # Start timer (for calculating frame rate)
+        t1 = cv2.getTickCount()
 
-    # Start timer (for calculating frame rate)
-    t1 = cv2.getTickCount()
-
-    # Grab frame from video stream
-    frame1 = videostream.read()
-    out.write(frame1)
-    frame1 = cv2.flip(frame1, 0)
-    frame1_resized = cv2.resize(frame1, (imW, imH))
-    
-    # Acquire frame and resize to expected shape [1xHxWx3]
-    frame = frame1.copy()
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    frame_resized = cv2.resize(frame_rgb, (width, height))
-    input_data = np.expand_dims(frame_resized, axis=0)
-
-    
-    # Normalize pixel values if using a floating model (i.e. if model is non-quantized)
-    if floating_model:
-        input_data = (np.float32(input_data) - input_mean) / input_std
-
-    
-    # Perform the actual detection by running the model with the image as input
-    interpreter.set_tensor(input_details[0]['index'],input_data)
-    interpreter.invoke()
-
-
-    # Retrieve detection results
-    boxes = interpreter.get_tensor(output_details[0]['index'])[0] # Bounding box coordinates of detected objects
-    classes = interpreter.get_tensor(output_details[1]['index'])[0] # Class index of detected objects
-    scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
-    
-    for i in range(len(scores)):
-        if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-            target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
-            if(point_in_area(target.getCenterPoint(), focus_area)):
-                needCapture = True
-    
-    if(needCapture == True):
-        saveImage(frame1_resized)
+        # Grab frame from video stream
+        frame1 = videostream.read()
+        frame1 = cv2.flip(frame1, 0)
+        frame1_resized = cv2.resize(frame1, (imW, imH))
+        
+        # Acquire frame and resize to expected shape [1xHxWx3]
+        frame = frame1.copy()
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_resized = cv2.resize(frame_rgb, (width, height))
+        input_data = np.expand_dims(frame_resized, axis=0)
+        
+        # Normalize pixel values if using a floating model (i.e. if model is non-quantized)
+        if floating_model:
+            input_data = (np.float32(input_data) - input_mean) / input_std
             
-    cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
-    cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
-    cv2.rectangle(frame1_resized, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
-    cv2.rectangle(frame1_resized, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
-    # Draw framerate in corner of frame
-    cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
-    
-    resize_frame = cv2.resize(frame1_resized, (500, 500))
-    # All the results have been drawn on the frame, so it's time to display it.
-    cv2.imshow('Object detector', resize_frame)
-    
-
-    # Calculate framerate
-    t2 = cv2.getTickCount()
-    time = (t2-t1)/freq
-    frame_rate_calc= 1/time
-    
-    #cv2.waitKey(0)
-    
-    # Press 'q' to quit
-    if cv2.waitKey(0) == ord('q'):
-       break
-
-
+        # Perform the actual detection by running the model with the image as input
+        interpreter.set_tensor(input_details[0]['index'],input_data)
+        interpreter.invoke()
+        
+        # Retrieve detection results
+        boxes = interpreter.get_tensor(output_details[0]['index'])[0] # Bounding box coordinates of detected objects
+        classes = interpreter.get_tensor(output_details[1]['index'])[0] # Class index of detected objects
+        scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
+        
+        for i in range(len(scores)):
+            if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
+                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
+                if(point_in_area(target.getCenterPoint(), focus_area)):
+                    needCapture = True
+        
+        if(needCapture == True):
+            saveImage(frame1_resized)
+            
+#        cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+#        cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+#        cv2.rectangle(frame1_resized, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
+#        cv2.rectangle(frame1_resized, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
+#        #Draw framerate in corner of frame
+#        cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
+        
+        resize_frame = cv2.resize(frame1_resized, (500, 500))
+        # All the results have been drawn on the frame, so it's time to display it.
+        cv2.imshow('Object detector', resize_frame)
+        
+        # Calculate framerate
+        t2 = cv2.getTickCount()
+        time = (t2-t1)/freq
+        frame_rate_calc= 1/time
+        
+        #cv2.waitKey(0)
+        
+        # Press 'q' to quit
+        if cv2.waitKey(0) == ord('q'):
+            break
+    except:
+        print('except')
 # Clean up
 out.release()
 cv2.destroyAllWindows()

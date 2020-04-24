@@ -156,59 +156,65 @@ person = None
 
 
 while(video.isOpened()):
-    
-    # Acquire frame and resize to expected shape [1xHxWx3]
-    ret, frame = video.read()
-    if ret:
-       #frame = cv2.flip(frame, 0)
-       fps = video.get(cv2.CAP_PROP_FPS)
-       frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-       frame_resized = cv2.resize(frame_rgb, (width, height))
-       input_data = np.expand_dims(frame_resized, axis=0)
+    try:
+        size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
+        # Acquire frame and resize to expected shape [1xHxWx3]
+        if( size > 8589934592):
+            break
+        
+        ret, frame = video.read()
+        if ret:
+           #frame = cv2.flip(frame, 0)
+           fps = video.get(cv2.CAP_PROP_FPS)
+           frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+           frame_resized = cv2.resize(frame_rgb, (width, height))
+           input_data = np.expand_dims(frame_resized, axis=0)
        
-       # Normalize pixel values if using a floating model (i.e. if model is non-quantized)
-       if floating_model:
-          input_data = (np.float32(input_data) - input_mean) / input_std
+        # Normalize pixel values if using a floating model (i.e. if model is non-quantized)
+        if floating_model:
+            input_data = (np.float32(input_data) - input_mean) / input_std
 
-       # Perform the actual detection by running the model with the image as input
-       interpreter.set_tensor(input_details[0]['index'],input_data)
-       interpreter.invoke()
-    
-       # Retrieve detection results
-       boxes = interpreter.get_tensor(output_details[0]['index'])[0] # Bounding box coordinates of detected objects
-       classes = interpreter.get_tensor(output_details[1]['index'])[0] # Class index of detected objects
-       scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
-       num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
+        # Perform the actual detection by running the model with the image as input
+        interpreter.set_tensor(input_details[0]['index'],input_data)
+        interpreter.invoke()
+        
+        # Retrieve detection results
+        boxes = interpreter.get_tensor(output_details[0]['index'])[0] # Bounding box coordinates of detected objects
+        classes = interpreter.get_tensor(output_details[1]['index'])[0] # Class index of detected objects
+        scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
+        num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
        
-       #print(scores)
-       person = None
-       needCapture = False
-       for i in range(len(scores)):
-           if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-               target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
-               ((xmin,ymin),(xmax,ymax)) = target.getBBox()
-               #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
-               center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
-               #cv2.circle(frame, center_point, 1, (10,255,0), 5)
-               object_name = target.getLabel()
-               score = target.getScore()
-               label = '%s' % (object_name)
-               labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-               label_ymin = max(ymin, labelSize[1] + 10)
-               if(point_in_area(target.getCenterPoint(), focus_area)):
-                   needCapture = True
-       if(needCapture == True):
-           saveImage(frame)
+        #print(scores)
+        person = None
+        needCapture = False
+        for i in range(len(scores)):
+            if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
+                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
+                ((xmin,ymin),(xmax,ymax)) = target.getBBox()
+                #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
+                center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
+                #cv2.circle(frame, center_point, 1, (10,255,0), 5)
+                object_name = target.getLabel()
+                score = target.getScore()
+                label = '%s' % (object_name)
+                labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+                label_ymin = max(ymin, labelSize[1] + 10)
+                if(point_in_area(target.getCenterPoint(), focus_area)):
+                    needCapture = True
+        if(needCapture == True):
+            saveImage(frame)
+            needCapture = False
        
 #       cv2.line(frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
 #       cv2.rectangle(frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
 #       cv2.rectangle(frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
 #       cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
-#       cv2.imshow('Object detector', frame)
-    
-    # Press 'q' to quit
-    if cv2.waitKey(0) == ord('q'):
-        break
+        cv2.imshow('Object detector', frame)
+        # Press 'q' to quit
+        if cv2.waitKey(0) == ord('q'):
+            break
+    except:
+        print('except')
 
 # Clean up
 video.release()
