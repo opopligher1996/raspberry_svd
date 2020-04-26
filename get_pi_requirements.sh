@@ -7,7 +7,11 @@ sudo apt-get -y install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
 sudo apt-get -y install libxvidcore-dev libx264-dev
 sudo apt-get -y install qt4-dev-tools libatlas-base-dev
 
-pip3 install opencv-python==3.4.6.27
+pip3 install opencv-contrib-python==3.4.6.27
+sudo apt-get update
+sudo apt-get install libhdf5-dev
+sudo apt-get update
+sudo apt-get install libhdf5-serial-dev
 
 # Get packages required for TensorFlow
 

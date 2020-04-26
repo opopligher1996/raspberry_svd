@@ -144,19 +144,20 @@ input_std = 127.5
 
 # Open video file
 video = cv2.VideoCapture(VIDEO_PATH)
-imW = video.get(cv2.CAP_PROP_FRAME_WIDTH)
-imH = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
+imW = 800
+imH = 600
 
 ##focus area
 focus_area = (449, 95, 204, 307)
 mid_line = (551, 0, 551, 600)
 standby_area_left = (347, 95, 102, 307)
 standby_area_right = (653, 95, 102, 307)
-person = None
-
+needCapture = False
+captureCount = 0
+targets = []
 
 while(video.isOpened()):
-    try:
+#    try:
         size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
         # Acquire frame and resize to expected shape [1xHxWx3]
         if( size > 8589934592):
@@ -167,6 +168,8 @@ while(video.isOpened()):
            #frame = cv2.flip(frame, 0)
            fps = video.get(cv2.CAP_PROP_FPS)
            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+           display_frame = frame.copy()
+           display_frame = cv2.resize(display_frame, (imW, imH))
            frame_resized = cv2.resize(frame_rgb, (width, height))
            input_data = np.expand_dims(frame_resized, axis=0)
        
@@ -185,15 +188,13 @@ while(video.isOpened()):
         num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
        
         #print(scores)
-        person = None
-        needCapture = False
         for i in range(len(scores)):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                 target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
                 ((xmin,ymin),(xmax,ymax)) = target.getBBox()
-                #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
+                cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
                 center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
-                #cv2.circle(frame, center_point, 1, (10,255,0), 5)
+                cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
                 object_name = target.getLabel()
                 score = target.getScore()
                 label = '%s' % (object_name)
@@ -201,20 +202,24 @@ while(video.isOpened()):
                 label_ymin = max(ymin, labelSize[1] + 10)
                 if(point_in_area(target.getCenterPoint(), focus_area)):
                     needCapture = True
-        if(needCapture == True):
-            saveImage(frame)
-            needCapture = False
+#        if(needCapture == True):
+#            captureCount = captureCount + 1
+#            if((captureCount % 20) == 0):
+#                saveImage(frame)
+#            if(captureCount == 100):
+#                needCapture = False
        
-#       cv2.line(frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
-#       cv2.rectangle(frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
-#       cv2.rectangle(frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
-#       cv2.rectangle(frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
-        cv2.imshow('Object detector', frame)
+        cv2.line(display_frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+        cv2.rectangle(display_frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+        cv2.rectangle(display_frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
+        cv2.rectangle(display_frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
+        cv2.imshow('Object detector', display_frame)
         # Press 'q' to quit
         if cv2.waitKey(0) == ord('q'):
             break
-    except:
-        print('except')
+#    except:
+#        print('except')
+#        break
 
 # Clean up
 video.release()
