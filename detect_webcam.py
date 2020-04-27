@@ -286,7 +286,7 @@ while True:
         
         if(needCapture == True):
             captureCount = captureCount + 1
-            if((captureCount % 20) == 0):
+            if((captureCount % 3) == 0):
                 saveImage(frame)
             if(captureCount == 100):
                 needCapture = False
@@ -298,9 +298,9 @@ while True:
 #        #Draw framerate in corner of frame
 #        cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
         
-        resize_frame = cv2.resize(frame1_resized, (500, 500))
-        # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', resize_frame)
+#        resize_frame = cv2.resize(frame1_resized, (500, 500))
+#        # All the results have been drawn on the frame, so it's time to display it.
+#        cv2.imshow('Object detector', resize_frame)
         
         # Calculate framerate
         t2 = cv2.getTickCount()
