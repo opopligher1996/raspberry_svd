@@ -154,10 +154,7 @@ standby_area_left = (347, 95, 102, 307)
 standby_area_right = (653, 95, 102, 307)
 needCapture = False
 captureCount = 0
-<<<<<<< HEAD
 targets = []
-=======
->>>>>>> b7455d757c195bc055acf8c5905f9d8a69945298
 
 while(video.isOpened()):
 #    try:
@@ -193,8 +190,8 @@ while(video.isOpened()):
         #print(scores)
         for i in range(len(scores)):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH))
-                ((xmin,ymin),(xmax,ymax)) = target.getBBox()
+                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), display_frame)
+                (xmin,ymin,xmax,ymax) = target.getBBox()
                 cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
                 center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
                 cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
@@ -205,21 +202,9 @@ while(video.isOpened()):
                 label_ymin = max(ymin, labelSize[1] + 10)
                 if(point_in_area(target.getCenterPoint(), focus_area)):
                     needCapture = True
-<<<<<<< HEAD
+
 #        if(needCapture == True):
-#            captureCount = captureCount + 1
-#            if((captureCount % 20) == 0):
-#                saveImage(frame)
-#            if(captureCount == 100):
-#                needCapture = False
-=======
-        if(needCapture == True):
-            captureCount = captureCount + 1
-            if((captureCount % 20) == 0):
-                saveImage(frame)
-            if(captureCount == 100):
-                needCapture = False
->>>>>>> b7455d757c195bc055acf8c5905f9d8a69945298
+#            saveImage(frame)
        
         cv2.line(display_frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
         cv2.rectangle(display_frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
@@ -227,7 +212,7 @@ while(video.isOpened()):
         cv2.rectangle(display_frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         cv2.imshow('Object detector', display_frame)
         # Press 'q' to quit
-        if cv2.waitKey(1) == ord('q'):
+        if cv2.waitKey(0) == ord('q'):
             break
 #    except:
 #        print('except')

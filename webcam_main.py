@@ -31,6 +31,7 @@ import datetime
 import json
 import requests
 import base64
+import math
 
 EDGETPU_SHARED_LIB = {
   'Linux': 'libedgetpu.so.1',
@@ -230,7 +231,7 @@ targets = []
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 while True:
-    try:
+#    try:
         size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
         # Acquire frame and resize to expected shape [1xHxWx3]
         if( size > 8589934592):
@@ -267,7 +268,7 @@ while True:
         
         for i in range(len(scores)):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), display_frame)
+                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), frame1_resized)
                 if(targets == []):
                     print('enter if(targets == [])')
                     target.setSelect()
@@ -283,15 +284,13 @@ while True:
         elif(targets != [] and tmp == []):
             updatedTargets = updatedTargets
         elif(targets != [] and tmp != []):
-            for target in updatedTargets:
-                updated_bbox = target.getTracker(frame1_resized)
-                (xmin, ymin, updated_bbox_width, updated_bbox_height) = updated_bbox
-                updated_bbox_center_point = (int(xmin+(updated_bbox_width/2)), int(ymin+(updated_bbox_height/2)))
-                shortest_distance = 300
+             for target in updatedTargets:
+                target_center_point = target.getCenterPoint()
+                shortest_distance = 500
                 selected_t_index = None
                 for i, t in enumerate(tmp):
                     center_point = t.getCenterPoint()
-                    d = distance_between_points(center_point, updated_bbox_center_point)
+                    d = distance_between_points(center_point, target_center_point)
                     if(d < shortest_distance):
                         selected_t_index = i
                 if(selected_t_index != None):
@@ -299,8 +298,17 @@ while True:
                     target.update(tmp[selected_t_index], frame1_resized)
                 else:
                     count = target.countDown()
-                    if(count == 0):
-                        updatedTargets.remove(target)
+                    
+                if(target.getCount() == 0):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "right"):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "standByRight"):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "left"):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "standByLeft"):
+                    updatedTargets.remove(target)
         
         for t in tmp:
             if(t.getIsSelected() == False):
@@ -324,16 +332,16 @@ while True:
 #            if(captureCount == 100):
 #                needCapture = False
             
-#        cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
-#        cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
-#        cv2.rectangle(frame1_resized, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
-#        cv2.rectangle(frame1_resized, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
-#        #Draw framerate in corner of frame
-#        cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
+        cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+        cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+        cv2.rectangle(frame1_resized, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
+        cv2.rectangle(frame1_resized, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
+        #Draw framerate in corner of frame
+        cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
         
 #        resize_frame = cv2.resize(frame1_resized, (500, 500))
 #        # All the results have been drawn on the frame, so it's time to display it.
-#        cv2.imshow('Object detector', resize_frame)
+        cv2.imshow('Object detector', frame1_resized)
         
         # Calculate framerate
         t2 = cv2.getTickCount()
@@ -345,8 +353,9 @@ while True:
         # Press 'q' to quit
         if cv2.waitKey(1) == ord('q'):
             break
-    except:
-        print('except')
+#    except:
+#        print('except')
+#        break
 # Clean up
 out.release()
 cv2.destroyAllWindows()

@@ -42,6 +42,10 @@ def point_in_area(point, area):
             return True
     return False
 
+def sendData(enter_count, exit_count):
+    print('send')
+    
+    
 def saveImage(frame):
     filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S.jpg")
     file_path = '/home/pi/workspace/svd/raspberry_svd/tmp/'+filename
@@ -196,7 +200,6 @@ while(video.isOpened()):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                 target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), display_frame)
                 if(targets == []):
-                    print('enter if(targets == [])')
                     target.setSelect()
                 tmp.append(target)
                 if(point_in_area(target.getCenterPoint(), focus_area)):
@@ -210,14 +213,12 @@ while(video.isOpened()):
             updatedTargets = updatedTargets
         elif(targets != [] and tmp != []):
             for target in updatedTargets:
-                updated_bbox = target.getTracker(display_frame)
-                (xmin, ymin, updated_bbox_width, updated_bbox_height) = updated_bbox
-                updated_bbox_center_point = (int(xmin+(updated_bbox_width/2)), int(ymin+(updated_bbox_height/2)))
-                shortest_distance = 300
+                target_center_point = target.getCenterPoint()
+                shortest_distance = 500
                 selected_t_index = None
                 for i, t in enumerate(tmp):
                     center_point = t.getCenterPoint()
-                    d = distance_between_points(center_point, updated_bbox_center_point)
+                    d = distance_between_points(center_point, target_center_point)
                     if(d < shortest_distance):
                         selected_t_index = i
                 if(selected_t_index != None):
@@ -225,8 +226,18 @@ while(video.isOpened()):
                     target.update(tmp[selected_t_index], display_frame)
                 else:
                     count = target.countDown()
-                    if(count == 0):
-                        updatedTargets.remove(target)
+                    
+                if(target.getCount() == 0):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "right"):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "standByRight"):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "left"):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "standByLeft"):
+                    updatedTargets.remove(target)
+                             
 
         for t in tmp:
             if(t.getIsSelected() == False):
@@ -235,14 +246,17 @@ while(video.isOpened()):
         targets = updatedTargets.copy()
             
         for target in targets:
+            target_init_status = str(target.getInitStatus())
+            target_status = str(target.getStatus())
             target_count = str(target.getCount())
             target_id = str(target.getId()) + ' count: ' + target_count
+            target_status = 'init_status: ' + target_init_status + ' status: '+ target_status
             (xmin,ymin,xmax,ymax) = target.getBBox()
             cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
             center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
             cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
-            cv2.putText(display_frame, target_id, (xmin+10, ymin+10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            
+            cv2.putText(display_frame, target_id, (xmin+10, ymin+10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv2.putText(display_frame, target_status, (xmin+10, ymin+40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 #        if(tmp != []): 
 #            targets = tmp
 #            for target in targets:

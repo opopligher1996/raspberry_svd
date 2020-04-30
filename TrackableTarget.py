@@ -5,7 +5,6 @@ class TrackableTarget:
  def __init__(self, bbox, score, label, imSize, frame):
      # store the object ID, then initialize a list of centroids
      self.id = random.randint(1, 1001)
-     self.status = "init"
      imW = imSize[0]
      imH = imSize[1]
      ymin = int(max(1,(bbox[0] * imH)))
@@ -19,12 +18,30 @@ class TrackableTarget:
      self.label = label
      self.path = None
      self.image = frame[ymin:ymax, xmin:xmax]
-     self.tracker = cv2.TrackerKCF_create()
-     self.tracker.init(frame, (xmin,ymin,xmax-xmin,ymax-ymin))
      self.isSelected = False
      self.isMissing = False
-#     self.centroid = centroid
-#     self.counted = False
+     self.setInitStatus()
+
+ def setInitStatus(self):
+     mid_line = 551
+     standby_area_left = 347
+     standby_area_right = 653
+     center_point = self.center_point
+     x = center_point[0]
+     if(x < mid_line):
+         if( x < standby_area_left):
+             self.initStatus = 'standByLeft'
+             self.status = 'standByLeft'
+         else:
+             self.initStatus = 'left'
+             self.status = 'left'
+     elif(x >= mid_line):
+         if( x > standby_area_right):
+             self.initStatus = 'standByRight'
+             self.status = 'standByRight'
+         else:
+             self.initStatus = 'right'
+             self.status = 'right'
 
  def setSelect(self):
      self.isSelected = True
@@ -32,9 +49,22 @@ class TrackableTarget:
  def update(self, trackableTarget, frame):
      self.bbox = trackableTarget.getBBox()
      self.center_point = trackableTarget.getCenterPoint()
-     self.tracker = cv2.TrackerKCF_create()
      (xmin,ymin,xmax,ymax) = self.bbox
-     self.tracker.init(frame, (xmin,ymin,xmax-xmin,ymax-ymin))
+     mid_line = 551
+     standby_area_left = 347
+     standby_area_right = 653
+     center_point = self.center_point
+     x = center_point[0]
+     if(x < mid_line):
+         if( x < standby_area_left):
+             self.status = 'standByLeft'
+         else:
+             self.status = 'left'
+     elif(x >= mid_line):
+         if( x > standby_area_right):
+             self.status = 'standByRight'
+         else:
+             self.status = 'right'
  
  def updateFrame(self, frame):
      self.frame = frame
@@ -44,10 +74,6 @@ class TrackableTarget:
 
  def getIsSelected(self):
      return self.isSelected
-    
- def getTracker(self, frame):
-     ok, bbox = self.tracker.update(frame)
-     return bbox
      
  def getId(self):
      return self.id
@@ -73,8 +99,14 @@ class TrackableTarget:
  def getImage(self):
      return self.image
     
+ def getInitStatus(self):
+     return self.initStatus
+ 
+ def getStatus(self):
+     return self.status
+ 
+ def getCount(self):
+     return self.count
+     
  def countDown(self):
      self.count = self.count - 1
-     if(self.count == 0):
-         self.isMissing = True
-     return self.count
