@@ -8,22 +8,11 @@ class RequestWorker():
     def __init__(self):
         print('start thread')
     
-    def sendRequest(self, trackableTarget):
-        
+    def uploadResult(self, license, enter_count, exit_count):
         headers = {'Content-Type': 'application/json'}
-        
-        ts = calendar.timegm(time.gmtime())
-        bbox = trackableTarget.getBBox()
-        score = trackableTarget.getScore()
-        label = trackableTarget.getLabel()
-        frame = str(trackableTarget.getFrame(), encoding='utf-8')
         payload = {
-            "trainingResult":{
-                "time": ts,
-                "img": frame,
-                "result": label,
-                "bbox": bbox,
-                "score": score.tolist()
-            }
+            "license": license,
+            "enter_count": enter_count,
+            "exit_count": exit_count
         }
         response = requests.post('https://3d76a619.ngrok.io/api/uploadTrainingResult', headers=headers, data=json.dumps(payload))
