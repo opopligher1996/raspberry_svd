@@ -51,7 +51,7 @@ def point_in_area(point, area):
     return False
 
 def saveImage(frame):
-    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S.jpg")
+    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f.jpg")
     file_path = '/home/pi/workspace/svd/tmp/'+filename
     cv2.imwrite(file_path, frame)
     return file_path

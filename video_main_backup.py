@@ -1,18 +1,3 @@
-######## Webcam Object Detection Using Tensorflow-trained Classifier #########
-#
-# Author: Evan Juras
-# Date: 10/2/19
-# Description: 
-# This program uses a TensorFlow Lite model to perform object detection on a
-# video. It draws boxes and scores around the objects of interest in each frame
-# from the video.
-#
-# This code is based off the TensorFlow Lite image classification example at:
-# https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/examples/python/label_image.py
-#
-# I added my own method of drawing boxes and labels using OpenCV.
-
-# Import packages
 import os
 import argparse
 import cv2
@@ -25,6 +10,7 @@ import requests
 import json
 import base64
 import datetime
+import math
 from threading import Thread
 from TrackableTarget import *
 
@@ -40,12 +26,19 @@ def point_in_area(point, area):
             return True
     return False
 
+def sendData(enter_count, exit_count):
+    print('send')
+    
+    
 def saveImage(frame):
-    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f.jpg")
+    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S.jpg")
     file_path = '/home/pi/workspace/svd/raspberry_svd/tmp/'+filename
     cv2.imwrite(file_path, frame)
     return file_path
 
+def distance_between_points(pointA, pointB):
+    d = math.sqrt((pointA[0]-pointB[0])*(pointA[0]-pointB[0]) + (pointA[1] - pointB[1])*(pointA[1] - pointB[1]))
+    return d
 
 EDGETPU_SHARED_LIB = {
   'Linux': 'libedgetpu.so.1',
@@ -147,12 +140,14 @@ imW = 800
 imH = 600
 
 ##focus area
-focus_area = (449, 95, 204, 307)
-mid_line = (551, 0, 551, 600)
-standby_area_left = (347, 95, 102, 307)
-standby_area_right = (653, 95, 102, 307)
+focus_area = (349, 95, 204, 307)
+mid_line = (451, 0, 451, 600)
+standby_area_left = (247, 95, 102, 307)
+standby_area_right = (553, 95, 102, 307)
 needCapture = False
 captureCount = 0
+inCount = 0
+exitCount = 0
 targets = []
 
 while(video.isOpened()):
@@ -186,32 +181,106 @@ while(video.isOpened()):
         scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
         num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
        
-        #print(scores)
+        tmp = []
         for i in range(len(scores)):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                 target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), display_frame)
-                (xmin,ymin,xmax,ymax) = target.getBBox()
-                cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
-                center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
-                cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
-                object_name = target.getLabel()
-                score = target.getScore()
-                label = '%s' % (object_name)
-                labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-                label_ymin = max(ymin, labelSize[1] + 10)
+                if(targets == []):
+                    target.setSelect()
+                tmp.append(target)
                 if(point_in_area(target.getCenterPoint(), focus_area)):
                     needCapture = True
-
-        if(needCapture == True):
-            saveImage(frame)
+        updatedTargets = targets.copy()
+        
+        if(targets == [] and tmp != []):
+            updatedTargets = tmp.copy()
+        elif(targets == [] and tmp == []):
+            updatedTargets = []
+        elif(targets != [] and tmp == []):
+            updatedTargets = updatedTargets
+        elif(targets != [] and tmp != []):
+            print('UpdatedTargets')
+            print(updatedTargets)
+            print('tmp')
+            print(tmp)
+            for target in updatedTargets:
+                target_center_point = target.getCenterPoint()
+                shortest_distance = 200
+                selected_t_index = None
+                for i, t in enumerate(tmp):
+                    center_point = t.getCenterPoint()
+                    d = distance_between_points(center_point, target_center_point)
+                    if(d < shortest_distance):
+                        selected_t_index = i
        
+                if(selected_t_index != None):
+                    if(tmp[selected_t_index].getIsSelected() == False):
+                        print(tmp[selected_t_index].getIsSelected())
+                        tmp[selected_t_index].setSelect()
+                        target.update(tmp[selected_t_index], display_frame)
+                        tmp.remove(tmp[selected_t_index])
+                    else:
+                        target.countDown()
+                else:
+                    target.countDown()
+                    
+                if(target.getCount() == 0):
+                    updatedTargets.remove(target)
+                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "right"):
+                    print('target in, id = '+str(target.getId()))
+                    updatedTargets.remove(target)
+                    inCount = inCount + 1
+                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "standByRight"):
+                    print('target in, id = '+str(target.getId()))
+                    updatedTargets.remove(target)
+                    inCount = inCount + 1
+                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "left"):
+                    print('target out, id = '+str(target.getId()))
+                    updatedTargets.remove(target)
+                    exitCount = exitCount + 1
+                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "standByLeft"):
+                    print('target out, id = '+str(target.getId()))
+                    updatedTargets.remove(target)
+                    exitCount = exitCount + 1
+                             
+
+        for t in tmp:
+            if(t.getIsSelected() == False):
+                t.setSelect()
+                updatedTargets.append(t)
+        print('updatedTargets')
+        print(updatedTargets)
+        targets = updatedTargets.copy()
+        
+        for target in targets:
+            target_init_status = str(target.getInitStatus())
+            target_status = str(target.getStatus())
+            target_count = str(target.getCount())
+            target_id = str(target.getId()) + ' count: ' + target_count
+            target_status = 'init_status: ' + target_init_status + ' status: '+ target_status
+            (xmin,ymin,xmax,ymax) = target.getBBox()
+            cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
+            center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
+            cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
+            cv2.putText(display_frame, target_id, (xmin+10, ymin+10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv2.putText(display_frame, target_status, (xmin+10, ymin+40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+#        if(needCapture == True):
+#            captureCount = captureCount + 1
+#            if((captureCount % 20) == 0):
+#                saveImage(frame)
+#            if(captureCount == 100):
+#                needCapture = False
+
+        cv2.putText(display_frame, 'In = '+str(inCount), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(display_frame, 'Out = '+str(exitCount), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         cv2.line(display_frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
         cv2.rectangle(display_frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
         cv2.rectangle(display_frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
         cv2.rectangle(display_frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         cv2.imshow('Object detector', display_frame)
         # Press 'q' to quit
-        if cv2.waitKey(1) == ord('q'):
+        if cv2.waitKey(0) == ord('q'):
             break
 #    except:
 #        print('except')
