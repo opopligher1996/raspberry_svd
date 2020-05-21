@@ -1,6 +1,10 @@
 import random
 import cv2
 
+mid_line = 500
+standby_area_left = 400
+standby_area_right = 600
+     
 class TrackableTarget:
  def __init__(self, bbox, score, label, imSize, frame):
      # store the object ID, then initialize a list of centroids
@@ -21,47 +25,43 @@ class TrackableTarget:
      self.isSelected = False
      self.isMissing = False
      self.setInitStatus()
+     self.tracker = None
 
  def setInitStatus(self):
-     mid_line = 451
-     standby_area_left = 247
-     standby_area_right = 553
      center_point = self.center_point
      x = center_point[0]
+     
      if(x < mid_line):
-         if( x < standby_area_left):
+         if( x > standby_area_left):
              self.initStatus = 'standByLeft'
              self.status = 'standByLeft'
          else:
              self.initStatus = 'left'
              self.status = 'left'
      elif(x >= mid_line):
-         if( x > standby_area_right):
+         if( x < standby_area_right):
              self.initStatus = 'standByRight'
              self.status = 'standByRight'
          else:
              self.initStatus = 'right'
              self.status = 'right'
 
- def setIsSelect(self, isSelected):
+ def setIsSelected(self, isSelected):
      self.isSelected = isSelected
      
  def update(self, trackableTarget, frame):
      self.bbox = trackableTarget.getBBox()
      self.center_point = trackableTarget.getCenterPoint()
      (xmin,ymin,xmax,ymax) = self.bbox
-     mid_line = 551
-     standby_area_left = 347
-     standby_area_right = 653
      center_point = self.center_point
      x = center_point[0]
      if(x < mid_line):
-         if( x < standby_area_left):
+         if( x > standby_area_left):
              self.status = 'standByLeft'
          else:
              self.status = 'left'
      elif(x >= mid_line):
-         if( x > standby_area_right):
+         if( x < standby_area_right):
              self.status = 'standByRight'
          else:
              self.status = 'right'
@@ -107,6 +107,22 @@ class TrackableTarget:
  
  def getCount(self):
      return self.count
+ 
+ def getTracker(self):
+     return self.tracker
+     
+ def setTracker(self, tracker):
+     self.tracker = tracker
      
  def countDown(self):
      self.count = self.count - 1
+     return self.count
+
+ def checkStatus(self):
+     if(self.initStatus == 'standByLeft' or self.initStatus == 'left'):
+         if(self.status == 'right' or self.status == 'standByRight'):
+             return 'out'
+     else:
+         if(self.status == 'left' or self.status == 'standByLeft'):
+             return 'in'
+     return 'running'

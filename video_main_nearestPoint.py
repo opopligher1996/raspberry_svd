@@ -11,6 +11,8 @@ import json
 import base64
 import datetime
 import math
+import dlib
+import request_utils
 from threading import Thread
 from TrackableTarget import *
 
@@ -40,6 +42,9 @@ def distance_between_points(pointA, pointB):
     d = math.sqrt((pointA[0]-pointB[0])*(pointA[0]-pointB[0]) + (pointA[1] - pointB[1])*(pointA[1] - pointB[1]))
     return d
 
+def is_not_selected(target):
+    return target.getIsSelected() == False  
+    
 EDGETPU_SHARED_LIB = {
   'Linux': 'libedgetpu.so.1',
   'Darwin': 'libedgetpu.1.dylib',
@@ -150,8 +155,17 @@ inCount = 0
 exitCount = 0
 targets = []
 
+trackers = []
+startTracker = False
+
+count = 0
+request_utils.uploadHeartBeat()
 while(video.isOpened()):
 #    try:
+        time = datetime.datetime.now().strftime("%H:%M:%S")
+        print(time + ' handle count = '+ str(count))
+        count = count + 1
+        
         size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
         # Acquire frame and resize to expected shape [1xHxWx3]
         if( size > 8589934592):
@@ -175,102 +189,120 @@ while(video.isOpened()):
         interpreter.set_tensor(input_details[0]['index'],input_data)
         interpreter.invoke()
         
+        
         # Retrieve detection results
         boxes = interpreter.get_tensor(output_details[0]['index'])[0] # Bounding box coordinates of detected objects
         classes = interpreter.get_tensor(output_details[1]['index'])[0] # Class index of detected objects
         scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
         num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
-       
+        
         tmp = []
         for i in range(len(scores)):
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-                target = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), display_frame)
-                if(targets == []):
-                    target.setSelect()
-                tmp.append(target)
-                if(point_in_area(target.getCenterPoint(), focus_area)):
-                    needCapture = True
-        updatedTargets = targets.copy()
+                t = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), display_frame)
+                tmp.append(t)
+#                if(point_in_area(target.getCenterPoint(), focus_area)):
+#                    needCapture = True
+#        updatedTargets = []
         
-        if(targets == [] and tmp != []):
-            updatedTargets = tmp.copy()
-        elif(targets == [] and tmp == []):
-            updatedTargets = []
-        elif(targets != [] and tmp == []):
-            updatedTargets = updatedTargets
-        elif(targets != [] and tmp != []):
-            print('UpdatedTargets')
-            print(updatedTargets)
-            print('tmp')
-            print(tmp)
-            for target in updatedTargets:
-                target_center_point = target.getCenterPoint()
-                shortest_distance = 200
-                selected_t_index = None
-                for i, t in enumerate(tmp):
-                    center_point = t.getCenterPoint()
-                    d = distance_between_points(center_point, target_center_point)
-                    if(d < shortest_distance):
-                        selected_t_index = i
-       
-                if(selected_t_index != None):
-                    if(tmp[selected_t_index].getIsSelected() == False):
-                        print(tmp[selected_t_index].getIsSelected())
-                        tmp[selected_t_index].setSelect()
-                        target.update(tmp[selected_t_index], display_frame)
-                        tmp.remove(tmp[selected_t_index])
-                    else:
-                        target.countDown()
-                else:
-                    target.countDown()
-                    
-                if(target.getCount() == 0):
-                    updatedTargets.remove(target)
-                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "right"):
-                    print('target in, id = '+str(target.getId()))
-                    updatedTargets.remove(target)
-                    inCount = inCount + 1
-                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "standByRight"):
-                    print('target in, id = '+str(target.getId()))
-                    updatedTargets.remove(target)
-                    inCount = inCount + 1
-                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "left"):
-                    print('target out, id = '+str(target.getId()))
-                    updatedTargets.remove(target)
-                    exitCount = exitCount + 1
-                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "standByLeft"):
-                    print('target out, id = '+str(target.getId()))
-                    updatedTargets.remove(target)
-                    exitCount = exitCount + 1
+#        if(len(tmp) == len(targets)):
+#            print('enter len(tmp) == len(targets) while len(tmp) = '+str(len(tmp))+' and len(targets) = '+str(len(targets)))
+#            for t in tmp:
+#                t_center_point = t.getCenterPoint()
+#                shortest_distance = 500
+#                selected_target_index = None
+#                for i, target in enumerate(targets):
+#                    target_center_point = target.getCenterPoint()
+#                    d = distance_between_points(t_center_point, target_center_point)
+#                    if(d < shortest_distance):
+#                        if(target.getIsSelected() == False):
+#                            selected_target_index = i
+#                if(selected_target_index != None):
+#                    print('enter selected_target_index != None')
+#                    selectedTarget = targets.pop(selected_target_index)
+#                    selectedTarget.setIsSelect(True)
+#                    selectedTarget.update(t, display_frame)
+#                    updatedTargets.append(selectedTarget)
+#            
+#        elif(len(tmp) < len(targets)):
+#            print('enter len(tmp) < len(targets) while len(tmp) = '+str(len(tmp))+' and len(targets) = '+str(len(targets)))
+#            for t in tmp:
+#                t_center_point = t.getCenterPoint()
+#                shortest_distance = 500
+#                selected_target_index = None
+#                for i, target in enumerate(targets):
+#                    target_center_point = target.getCenterPoint()
+#                    d = distance_between_points(t_center_point, target_center_point)
+#                    if(d < shortest_distance):
+#                        if(target.getIsSelected() == False):
+#                            selected_target_index = i
+#                if(selected_target_index != None):
+#                    selectedTarget = targets.pop(selected_target_index)
+#                    selectedTarget.setIsSelect(True)
+#                    selectedTarget.update(t, display_frame)
+#                    updatedTargets.append(selectedTarget)
+#            
+            #check remaining target missing or not detected
+#            for target in targets:
+#                target.countDown()
+#                updatedTargets.append(target)
+#        elif(len(tmp) > len(targets)):
+#            print('enter len(tmp) > len(targets)')
+#            for target in updatedTargets:
+#                target_center_point = target.getCenterPoint()
+#                shortest_distance = 500
+#                selected_t_index = None
+#                for i, t in enumerate(tmp):
+#                    t_center_point = t.getCenterPoint()
+#                    d = distance_between_points(center_point, target_center_point)
+#                    if(d < shortest_distance):
+#                        selected_t_index = i
+#                if(selected_t_index != None):
+#                    target.setIsSelect(True)
+#                    target.update(t)
+#                    updatedTargets.append(target)
+#            filter_tmp = filter(is_not_selected, tmp)
+#            for t in filter_tmp:
+#                print('t')
+#                print(t)
+#                updatedTargets.append(t)
+#                if(target.getCount() == 0):
+#                    updatedTargets.remove(target)
+#                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "right"):
+#                    print('target in, id = '+str(target.getId()))
+#                    updatedTargets.remove(target)
+#                    inCount = inCount + 1
+#                elif(target.getStatus() == "standByLeft" and target.getInitStatus() == "standByRight"):
+#                    print('target in, id = '+str(target.getId()))
+#                    updatedTargets.remove(target)
+#                    inCount = inCount + 1
+#                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "left"):
+#                    print('target out, id = '+str(target.getId()))
+#                    updatedTargets.remove(target)
+#                    exitCount = exitCount + 1
+#                elif(target.getStatus() == "standByRight" and target.getInitStatus() == "standByLeft"):
+#                    print('target out, id = '+str(target.getId()))
+#                    updatedTargets.remove(target)
+#                    exitCount = exitCount + 1
                              
-
-        for t in tmp:
-            if(t.getIsSelected() == False):
-                t.setSelect()
-                updatedTargets.append(t)
-        print('updatedTargets')
-        print(updatedTargets)
-        targets = updatedTargets.copy()
+        updatedTargets = tmp.copy()
         
+        targets = updatedTargets.copy()
+        trackers = []
         for target in targets:
+            target.setIsSelect(False)
             target_init_status = str(target.getInitStatus())
             target_status = str(target.getStatus())
             target_count = str(target.getCount())
             target_id = str(target.getId()) + ' count: ' + target_count
             target_status = 'init_status: ' + target_init_status + ' status: '+ target_status
             (xmin,ymin,xmax,ymax) = target.getBBox()
+            startTracker = True
             cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
             center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
             cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
             cv2.putText(display_frame, target_id, (xmin+10, ymin+10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             cv2.putText(display_frame, target_status, (xmin+10, ymin+40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-
-#        if(needCapture == True):
-#            captureCount = captureCount + 1
-#            if((captureCount % 20) == 0):
-#                saveImage(frame)
-#            if(captureCount == 100):
-#                needCapture = False
 
         cv2.putText(display_frame, 'In = '+str(inCount), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         cv2.putText(display_frame, 'Out = '+str(exitCount), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
@@ -280,7 +312,7 @@ while(video.isOpened()):
         cv2.rectangle(display_frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         cv2.imshow('Object detector', display_frame)
         # Press 'q' to quit
-        if cv2.waitKey(0) == ord('q'):
+        if cv2.waitKey(1) == ord('q'):
             break
 #    except:
 #        print('except')

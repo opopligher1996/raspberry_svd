@@ -4,6 +4,14 @@ import time
 import json
 import base64
 
+def uploadHeartBeat():
+    headers = {'Content-Type': 'application/json'}
+    response = requests.get('http://staging.socif.co:8011/api/uploadHeartBeat')
+    
+def uplaodFullAlert():
+    headers = {'Content-Type': 'application/json'}
+    response = requests.get('http://staging.socif.co:8011/api/uploadFullAlert')
+    
 def uploadResult(license, enter_count, exit_count):
     headers = {'Content-Type': 'application/json'}
     payload = {
