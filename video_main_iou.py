@@ -229,8 +229,12 @@ while(video.isOpened()):
                 tmp[selected_tmp_index].setIsSelected(True)
                 target.update(tmp[selected_tmp_index], display_frame )
                 inOrOut = target.checkStatus()
-                print('inOrOut : '+inOrOut)
-                updatedTargets.append(target)
+                if(inOrOut == "running"):
+                    updatedTargets.append(target)
+                elif(inOrOut == "in"):
+                    inCount = inCount + 1
+                else:
+                    exitCount = exitCount + 1
             else:
                 countDown = target.countDown()
                 if(countDown > 0):
@@ -238,7 +242,6 @@ while(video.isOpened()):
         
         for t in tmp:
             if(t.getIsSelected() == False):
-                print('create '+str(t.getId()))
                 updatedTargets.append(t)
 
         
@@ -251,22 +254,21 @@ while(video.isOpened()):
             target_id = str(target.getId()) + ' count: ' + target_count
             target_status = 'init_status: ' + target_init_status + ' status: '+ target_status
             (xmin,ymin,xmax,ymax) = target.getBBox()
-            startTracker = True
             cv2.rectangle(display_frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 4)
             center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
             cv2.circle(display_frame, center_point, 1, (10,255,0), 5)
             cv2.putText(display_frame, target_id, (xmin+10, ymin+10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             cv2.putText(display_frame, target_status, (xmin+10, ymin+40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-        cv2.putText(display_frame, 'In = '+str(inCount), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-        cv2.putText(display_frame, 'Out = '+str(exitCount), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(display_frame, 'In = '+str(inCount), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(display_frame, 'Out = '+str(exitCount), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         cv2.line(display_frame, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
         cv2.rectangle(display_frame, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
         cv2.rectangle(display_frame, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
 #        cv2.rectangle(display_frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         cv2.imshow('Object detector', display_frame)
         # Press 'q' to quit
-        if cv2.waitKey(1) == ord('q'):
+        if cv2.waitKey(0) == ord('q'):
             break
 #    except:
 #        print('except')
