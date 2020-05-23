@@ -237,7 +237,7 @@ while True:
             
         now = datetime.datetime.now()
         time_different = now - lastUpdate
-        if(time_different.total_seconds() > 5):
+        if(time_different.total_seconds() > 20):
             lastUpdate = now
             request_utils.uploadResult('7237', inCount, exitCount)
         print(now.strftime("%H:%M:%S") + ' handle count = '+ str(count))

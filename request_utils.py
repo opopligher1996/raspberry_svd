@@ -7,14 +7,14 @@ import base64
 def uploadHeartBeat():
     try:
         headers = {'Content-Type': 'application/json'}
-        response = requests.get('http://staging.socif.co:8011/api/uploadHeartBeat')
+        response = requests.post('http://staging.socif.co:8011/api/uploadHeartBeat')
     except:
         print('upload Heart Beat Error')
     
 def uplaodFullAlert():
     try:
         headers = {'Content-Type': 'application/json'}
-        response = requests.get('http://staging.socif.co:8011/api/uploadFullAlert')
+        response = requests.post('http://staging.socif.co:8011/api/uploadFullAlert')
     except:
         print('upload Full Alert Error')
     
