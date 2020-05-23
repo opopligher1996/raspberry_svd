@@ -228,7 +228,7 @@ exitCount = 0
 targets = []
 count = 0
 lastUpdate = datetime.datetime.now()
-
+lastDetectTime = None
 
 request_utils.uploadHeartBeat()
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
@@ -280,8 +280,16 @@ while True:
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                 t = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), frame1_resized)
                 tmp.append(t)
-#                if(point_in_area(target.getCenterPoint(), focus_area)):
-#                    needCapture = True
+                lastDetectTime = datetime.datetime.now()
+                time_different = now - lastUpdate
+                if(time_different.total_seconds() < 5):
+                    saveImage(frame1_resized)
+
+        
+        if(lastDetectTime != None):
+            now = datetime.datetime.now()
+            
+            
         updatedTargets = []
         
         for target in targets:

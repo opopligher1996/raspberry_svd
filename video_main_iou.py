@@ -166,6 +166,9 @@ inCount = 0
 exitCount = 0
 targets = []
 count = 0
+
+lastDetectTime = None
+
 request_utils.uploadHeartBeat()
 while(video.isOpened()):
 #    try:

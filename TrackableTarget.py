@@ -18,7 +18,7 @@ class TrackableTarget:
      self.bbox = (xmin,ymin,xmax,ymax)
      self.center_point = (int((xmin+xmax)/2) , int((ymin+ymax)/2))
      self.score = score
-     self.count = 2
+     self.count = 5
      self.label = label
      self.path = None
      self.image = frame[ymin:ymax, xmin:xmax]
@@ -50,6 +50,7 @@ class TrackableTarget:
      self.isSelected = isSelected
      
  def update(self, trackableTarget, frame):
+     self.count = 5
      self.bbox = trackableTarget.getBBox()
      self.center_point = trackableTarget.getCenterPoint()
      (xmin,ymin,xmax,ymax) = self.bbox
@@ -120,9 +121,9 @@ class TrackableTarget:
 
  def checkStatus(self):
      if(self.initStatus == 'standByLeft' or self.initStatus == 'left'):
-         if(self.status == 'right' or self.status == 'standByRight'):
+         if(self.status == 'right'):
              return 'out'
      else:
-         if(self.status == 'left' or self.status == 'standByLeft'):
+         if(self.status == 'left'):
              return 'in'
      return 'running'
