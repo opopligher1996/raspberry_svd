@@ -310,7 +310,9 @@ while True:
                 if(countDown > 0):
                     updatedTargets.append(target)
         
-
+        for t in tmp:
+            if(t.getIsSelected() == False):
+                updatedTargets.append(t)
 #        if(needCapture == True):
 #            captureCount = captureCount + 1
 #            if((captureCount % 3) == 0):
