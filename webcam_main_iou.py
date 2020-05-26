@@ -52,8 +52,8 @@ def point_in_area(point, area):
     return False
 
 def saveImage(frame):
-    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S.jpg")
-    file_path = '/home/pi/workspace/svd/tmp/'+filename
+    filename = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f.jpg")
+    file_path = '/home/pi/workspace/svd/raspberry_svd/tmp/'+filename
     cv2.imwrite(file_path, frame)
     return file_path
     
@@ -240,7 +240,7 @@ while True:
         if(time_different.total_seconds() > 20):
             lastUpdate = now
             request_utils.uploadResult('7237', inCount, exitCount)
-        print(now.strftime("%H:%M:%S") + ' handle count = '+ str(count))
+#         print(now.strftime("%H:%M:%S") + ' handle count = '+ str(count))
         count = count + 1
         
         size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
@@ -253,7 +253,7 @@ while True:
 
         # Grab frame from video stream
         frame1 = videostream.read()
-        frame1 = cv2.flip(frame1, 0)
+#         frame1 = cv2.flip(frame1, 0)
         frame1_resized = cv2.resize(frame1, (imW, imH))
         
         # Acquire frame and resize to expected shape [1xHxWx3]
@@ -280,15 +280,13 @@ while True:
             if((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
                 t = TrackableTarget(boxes[i], scores, labels[int(classes[i])], (imW, imH), frame1_resized)
                 tmp.append(t)
-                lastDetectTime = datetime.datetime.now()
-                time_different = now - lastUpdate
-                if(time_different.total_seconds() < 5):
-                    saveImage(frame1_resized)
 
         
         if(lastDetectTime != None):
             now = datetime.datetime.now()
-            
+            time_different_lastDetectTime = now - lastDetectTime
+            if(int(time_different_lastDetectTime.total_seconds()) < 3):
+                saveImage(frame1_resized)
             
         updatedTargets = []
         
@@ -301,7 +299,8 @@ while True:
                     selected_tmp_index = i
                     min_iou = iou
                     (xmin,ymin,xmax,ymax) = t.getBBox()
-                    cv2.rectangle(frame1_resized, (xmin,ymin), (xmax,ymax), (255, 255, 255), 4)
+#                     cv2.rectangle(frame1_resized, (xmin,ymin), (xmax,ymax), (255, 255, 255), 4)
+
             
             if(selected_tmp_index != None):
                 tmp[selected_tmp_index].setIsSelected(True)
@@ -310,8 +309,10 @@ while True:
                 if(inOrOut == "running"):
                     updatedTargets.append(target)
                 elif(inOrOut == "in"):
+                    lastDetectTime = datetime.datetime.now()
                     inCount = inCount + 1
                 else:
+                    lastDetectTime = datetime.datetime.now()
                     exitCount = exitCount + 1
             else:
                 countDown = target.countDown()
@@ -321,23 +322,21 @@ while True:
         for t in tmp:
             if(t.getIsSelected() == False):
                 updatedTargets.append(t)
-#        if(needCapture == True):
-#            captureCount = captureCount + 1
-#            if((captureCount % 3) == 0):
-#                saveImage(frame)
-#            if(captureCount == 100):
-#                needCapture = False
-            
-        cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
-        cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
-        cv2.rectangle(frame1_resized, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
+
+        targets = updatedTargets.copy()
+        
+#         cv2.putText(frame1_resized, 'In = '+str(inCount), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+#         cv2.putText(frame1_resized, 'Out = '+str(exitCount), (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+#         cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
+#         cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)
+#         cv2.rectangle(frame1_resized, (standby_area_right[0], standby_area_right[1]), (standby_area_right[0]+standby_area_right[2],standby_area_right[1]+standby_area_right[3]), (255, 0, 0), 4)
 #        cv2.rectangle(frame1_resized, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         #Draw framerate in corner of frame
-        cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
+#         cv2.putText(frame1_resized,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
         
 #        resize_frame = cv2.resize(frame1_resized, (500, 500))
 #        # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', frame1_resized)
+#         cv2.imshow('Object detector', frame1_resized)
         
         # Calculate framerate
         t2 = cv2.getTickCount()
