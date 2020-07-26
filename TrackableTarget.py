@@ -1,8 +1,8 @@
 import random
 import cv2
 
-mid_line = 500
-standby_area_left = 400
+mid_line = 550
+standby_area_left = 500
 standby_area_right = 600
      
 class TrackableTarget:
@@ -18,7 +18,7 @@ class TrackableTarget:
      self.bbox = (xmin,ymin,xmax,ymax)
      self.center_point = (int((xmin+xmax)/2) , int((ymin+ymax)/2))
      self.score = score
-     self.count = 5
+     self.count = 3
      self.label = label
      self.path = None
      self.image = frame[ymin:ymax, xmin:xmax]
@@ -50,7 +50,7 @@ class TrackableTarget:
      self.isSelected = isSelected
      
  def update(self, trackableTarget, frame):
-     self.count = 5
+     self.count = 3
      self.bbox = trackableTarget.getBBox()
      self.center_point = trackableTarget.getCenterPoint()
      (xmin,ymin,xmax,ymax) = self.bbox

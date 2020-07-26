@@ -157,9 +157,9 @@ imH = 600
 
 ##focus area
 #focus_area = (449, 95, 204, 307)
-mid_line = (500, 0, 500, 600)
-standby_area_left = (400, 45, 100, 357)
-standby_area_right = (500, 45, 100, 357)
+mid_line = (550, 0, 550, 600)
+standby_area_left = (500, 45, 50, 357)
+standby_area_right = (550, 45, 50, 357)
 needCapture = False
 captureCount = 0
 inCount = 0
@@ -215,7 +215,7 @@ while(video.isOpened()):
         updatedTargets = []
         
         for target in targets:
-            min_iou = 0.5
+            min_iou = 0.4
             selected_tmp_index = None
             for i, t in enumerate(tmp):
                 iou = cal_iou(target.getBBox(), t.getBBox())
@@ -268,8 +268,12 @@ while(video.isOpened()):
 #        cv2.rectangle(display_frame, (focus_area[0], focus_area[1]), (focus_area[0]+focus_area[2],focus_area[1]+focus_area[3]), (0, 0, 255), 4)
         cv2.imshow('Object detector', display_frame)
         # Press 'q' to quit
-        if cv2.waitKey(0) == ord('q'):
-            break
+        if count > 9999:
+            if cv2.waitKey(0) == ord('q'):
+                break
+        else:
+            if cv2.waitKey(1) == ord('q'):
+                break
 #    except:
 #        print('except')
 #        break
