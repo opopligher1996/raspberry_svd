@@ -229,12 +229,14 @@ needCapture = False
 captureCount = 0
 targets = []
 
+is_full_cap = False
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 while True:
 #    try:
         size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
         # Acquire frame and resize to expected shape [1xHxWx3]
         if( size > 8589934592):
+            is_full_cap = True
             break
         
         # Start timer (for calculating frame rate)
@@ -324,13 +326,6 @@ while True:
             center_point = (int((xmin+xmax)/2), int((ymin+ymax)/2))
             cv2.circle(frame1_resized, center_point, 1, (10,255,0), 5)
             cv2.putText(frame1_resized, target_id, (xmin+10, ymin+10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-       
-#        if(needCapture == True):
-#            captureCount = captureCount + 1
-#            if((captureCount % 3) == 0):
-#                saveImage(frame)
-#            if(captureCount == 100):
-#                needCapture = False
             
         cv2.line(frame1_resized, (mid_line[0], mid_line[1]), (mid_line[2], mid_line[3]), (0, 0, 255), 4)
         cv2.rectangle(frame1_resized, (standby_area_left[0], standby_area_left[1]), (standby_area_left[0]+standby_area_left[2],standby_area_left[1]+standby_area_left[3]), (255, 0, 0), 4)

@@ -229,6 +229,7 @@ targets = []
 count = 0
 lastUpdate = datetime.datetime.now()
 lastDetectTime = None
+is_full_cap = False
 
 request_utils.uploadHeartBeat()
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
@@ -246,7 +247,7 @@ while True:
         size = sum(d.stat().st_size for d in os.scandir('/home/pi/workspace/svd/raspberry_svd/tmp') if d.is_file())
         # Acquire frame and resize to expected shape [1xHxWx3]
         if( size > 8589934592):
-            break
+            is_full_cap = True
         
         # Start timer (for calculating frame rate)
         t1 = cv2.getTickCount()
@@ -285,7 +286,7 @@ while True:
         if(lastDetectTime != None):
             now = datetime.datetime.now()
             time_different_lastDetectTime = now - lastDetectTime
-            if(int(time_different_lastDetectTime.total_seconds()) < 3):
+            if(int(time_different_lastDetectTime.total_seconds()) < 3 and is_full_cap == False):
                 saveImage(frame1_resized)
             
         updatedTargets = []
